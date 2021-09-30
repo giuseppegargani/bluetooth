@@ -21,6 +21,15 @@
         android:layout_below="@id/label"
         android:background="@android:drawable/editbox_background" />
 
+
+    <Button
+        android:id="@+id/show"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/entry"
+        android:layout_alignParentRight="true"
+
+        android:text="Show" />
     <Button
         android:id="@+id/open"
         android:layout_width="fill_parent"
@@ -29,6 +38,8 @@
         android:layout_alignParentRight="true"
 
         android:text="Open" />
+
+
 
 
 

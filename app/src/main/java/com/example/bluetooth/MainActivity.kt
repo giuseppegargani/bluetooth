@@ -16,6 +16,10 @@ import java.io.InputStream
 import java.io.OutputStream
 import java.nio.charset.Charset
 import java.util.*
+import android.os.ParcelUuid
+import android.util.Log
+import java.lang.StringBuilder
+import java.lang.reflect.Method
 
 
 class MainActivity : Activity() {
@@ -23,7 +27,7 @@ class MainActivity : Activity() {
     var myTextbox: EditText? = null
     var mBluetoothAdapter: BluetoothAdapter? = null
     var mmSocket: BluetoothSocket? = null
-     var mmDevice: BluetoothDevice? = null
+    var mmDevice: BluetoothDevice? = null
     var mmOutputStream: OutputStream? = null
     var mmInputStream: InputStream? = null
     var workerThread: Thread? = null
@@ -38,6 +42,7 @@ class MainActivity : Activity() {
         setContentView(R.layout.activity_main)
 
         val openButton = findViewById<View>(R.id.open) as Button
+        val showButton = findViewById<View>(R.id.show) as Button
 
 
         myLabel = findViewById<View>(R.id.label) as TextView
@@ -46,8 +51,18 @@ class MainActivity : Activity() {
         //Open Button
         openButton.setOnClickListener {
             try {
-                findBT()
+               // findBT()
                 openBT()
+            } catch (ex: IOException) {
+            }
+        }
+
+
+        //Show Button
+        openButton.setOnClickListener {
+            try {
+                findBT()
+               // openBT()
             } catch (ex: IOException) {
             }
         }
@@ -69,15 +84,29 @@ class MainActivity : Activity() {
         val pairedDevices = BluetoothAdapter.getDefaultAdapter().bondedDevices
 
         if (pairedDevices.size > 0) {
-            myLabel!!.text="Paired devices:"
+          //  myLabel!!.text="Paired devices:"
+
+            val builder = StringBuilder()
 
             for (device in pairedDevices){
-                val deviceName = device.name
-                myLabel!!.append("\nDevice: $deviceName, ${device.uuids}")
+                val uuids = device!!.uuids
+                for (i in uuids.indices) {
+                    val uuid = uuids[i]
+                    builder.append(uuid.uuid.toString())
+                }
+
+                myLabel!!.text=builder.toString()
 
             }
             }
-        mmDevice = pairedDevices.first()
+
+
+
+
+
+
+
+
     }
 
 
@@ -86,7 +115,7 @@ class MainActivity : Activity() {
     @Throws(IOException::class)
     fun openBT() {
         val uuid =
-            UUID.fromString("00001101-0000-1000-8000-00805F9B34FB") //Standard SerialPortService ID
+            UUID.fromString(myTextbox!!.getText().toString()) //Standard SerialPortService ID
         var mmSocket =  mmDevice!!.createRfcommSocketToServiceRecord(uuid)
         mmSocket.connect()
         mmOutputStream = mmSocket.getOutputStream()
