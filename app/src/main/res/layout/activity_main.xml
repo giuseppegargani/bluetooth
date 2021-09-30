@@ -9,57 +9,29 @@
     tools:context=".MainActivity">
 
     <TextView
-        android:id="@+id/bluetoothStatusTv"
-        android:layout_width="match_parent"
+        android:id="@+id/label"
+        android:layout_width="fill_parent"
         android:layout_height="wrap_content"
-        android:text=""
-        android:padding="5dp"
-        android:textAlignment="center"
-        android:layout_gravity="center_horizontal"
-        android:textColor="#000"
-        android:textSize="20sp"
-       />
-    <ImageView
-        android:id="@+id/bluetoothIv"
-        android:layout_width="100dp"
-        android:layout_height="100dp"
-        android:src="@drawable/k_bluetooth_off" />
-    <Button
-        android:id="@+id/turnOnBtn"
-        android:layout_width="wrap_content"
+        android:text="Type here:" />
+
+    <EditText
+        android:id="@+id/entry"
+        android:layout_width="fill_parent"
         android:layout_height="wrap_content"
-        style="@style/Widget.AppCompat.Button.Colored"
-        android:text="Turn On"
-        android:minWidth="200dp"/>
+        android:layout_below="@id/label"
+        android:background="@android:drawable/editbox_background" />
 
     <Button
-        android:id="@+id/turnOffBtn"
-        android:layout_width="wrap_content"
+        android:id="@+id/open"
+        android:layout_width="fill_parent"
         android:layout_height="wrap_content"
-        style="@style/Widget.AppCompat.Button.Colored"
-        android:text="Turn Off"
-        android:minWidth="200dp"/>
+        android:layout_below="@id/entry"
+        android:layout_alignParentRight="true"
 
-    <Button
-        android:id="@+id/discoverableOnBtn"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        style="@style/Widget.AppCompat.Button.Colored"
-        android:text="Discoverable"
-        android:minWidth="200dp"/>
+        android:text="Open" />
 
-    <Button
-        android:id="@+id/pairedBtn"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        style="@style/Widget.AppCompat.Button.Colored"
-        android:text="Get Paired Devices"
-        android:minWidth="200dp"/>
-    <TextView
-        android:id="@+id/pairedTv"
-        android:padding="5dp"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:textColor="#000" />
+
+
+
 
 </LinearLayout>

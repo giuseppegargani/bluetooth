@@ -2,106 +2,148 @@ package com.example.bluetooth
 
 import android.app.Activity
 import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothDevice
+import android.bluetooth.BluetoothSocket
 import android.content.Intent
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.os.Handler
+import android.view.View
 import android.widget.Button
-import android.widget.ImageView
+import android.widget.EditText
 import android.widget.TextView
-import android.widget.Toast
+import java.io.IOException
+import java.io.InputStream
+import java.io.OutputStream
+import java.nio.charset.Charset
+import java.util.*
 
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : Activity() {
+    var myLabel: TextView? = null
+    var myTextbox: EditText? = null
+    var mBluetoothAdapter: BluetoothAdapter? = null
+    var mmSocket: BluetoothSocket? = null
+     var mmDevice: BluetoothDevice? = null
+    var mmOutputStream: OutputStream? = null
+    var mmInputStream: InputStream? = null
+    var workerThread: Thread? = null
+    lateinit var readBuffer: ByteArray
+    var readBufferPosition = 0
+    var counter = 0
 
-    private val  REQUEST_CODE_ENABLE_BT:Int =1
-    private val  REQUEST_CODE_DISCOVERABLE_BT:Int =1
-
-    lateinit var bAdapter:BluetoothAdapter
-
-
-    override fun onCreate(savedInstanceState: Bundle?) {
+    @Volatile
+    var stopWorker = false
+    public override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        bAdapter= BluetoothAdapter.getDefaultAdapter();
+        val openButton = findViewById<View>(R.id.open) as Button
 
-        val bluetoothStatusTv = findViewById<TextView>(R.id.bluetoothStatusTv)
-        if(bAdapter == null){
-         bluetoothStatusTv.text="Blutooth is not available"
-        } else {
-            bluetoothStatusTv.text="Blutooth is  available"
-        }
 
-        val bluetoothIv= findViewById<ImageView>(R.id.bluetoothIv)
-        if(bAdapter.isEnabled){
-            bluetoothIv.setImageResource(R.drawable.k_bluetooth_on)
-        }else {
-            bluetoothIv.setImageResource(R.drawable.k_bluetooth_off)
-        }
-        val turnOnBtn = findViewById<Button>(R.id.turnOnBtn)
-        val turnOffBtn = findViewById<Button>(R.id.turnOffBtn)
-        val discoverableOnBtn = findViewById<Button>(R.id.discoverableOnBtn)
+        myLabel = findViewById<View>(R.id.label) as TextView
+        myTextbox = findViewById<View>(R.id.entry) as EditText
 
-        turnOnBtn.setOnClickListener {
-            if(bAdapter.isEnabled){
-                    Toast.makeText(this,"Already On", Toast.LENGTH_LONG).show()
-            }else {
-                val intent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
-
-                startActivityForResult(intent,REQUEST_CODE_ENABLE_BT)
+        //Open Button
+        openButton.setOnClickListener {
+            try {
+                findBT()
+                openBT()
+            } catch (ex: IOException) {
             }
         }
 
-        turnOffBtn.setOnClickListener {
-            if(!bAdapter.isEnabled){
-                Toast.makeText(this,"Already Off", Toast.LENGTH_LONG).show()
-            }else {
-              bAdapter.disable()
-                val bluetoothIv= findViewById<ImageView>(R.id.bluetoothIv)
-                bluetoothIv.setImageResource(R.drawable.k_bluetooth_off)
-                Toast.makeText(this,"Bluetooth turned off", Toast.LENGTH_LONG).show()
-            }
-        }
 
-        discoverableOnBtn.setOnClickListener {
-            if(!bAdapter.isDiscovering){
-                Toast.makeText(this,"Making your device discoverable", Toast.LENGTH_LONG).show()
-                val intent = Intent(Intent(BluetoothAdapter.ACTION_REQUEST_DISCOVERABLE))
-                startActivityForResult(intent, REQUEST_CODE_DISCOVERABLE_BT)
-            }
-        }
-
-        val pairedBtn = findViewById<Button>(R.id.pairedBtn)
-        pairedBtn.setOnClickListener {
-            if(bAdapter.isEnabled){
-                val pairedTv = findViewById<TextView>(R.id.pairedTv)
-                pairedTv.text="Paired devices:"
-                val devices = bAdapter.bondedDevices
-                for (device in devices){
-                    val deviceName = device.name
-                    pairedTv.append("\nDevice: $deviceName, $device")
-
-                }
-
-            }else {
-                Toast.makeText(this,"Turn on bluetooth first", Toast.LENGTH_LONG).show()
-            }
-        }
 
 
     }
 
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        when(requestCode) {
-            REQUEST_CODE_ENABLE_BT ->
-                if(resultCode == Activity.RESULT_OK){
-                    val bluetoothIv= findViewById<ImageView>(R.id.bluetoothIv)
-                    bluetoothIv.setImageResource(R.drawable.k_bluetooth_on)
-                    Toast.makeText(this,"Blutooth is on", Toast.LENGTH_LONG).show()
-                }else {
-                    Toast.makeText(this,"Cant on bluetooth", Toast.LENGTH_LONG).show()
-                }
+    fun findBT() {
+        mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
+        if (mBluetoothAdapter == null) {
+            myLabel!!.text = "No bluetooth adapter available"
         }
-        super.onActivityResult(requestCode, resultCode, data)
+        if (!BluetoothAdapter.getDefaultAdapter().isEnabled) {
+            val enableBluetooth = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
+            startActivityForResult(enableBluetooth, 0)
+        }
+        val pairedDevices = BluetoothAdapter.getDefaultAdapter().bondedDevices
+
+        if (pairedDevices.size > 0) {
+            myLabel!!.text="Paired devices:"
+
+            for (device in pairedDevices){
+                val deviceName = device.name
+                myLabel!!.append("\nDevice: $deviceName, ${device.uuids}")
+
+            }
+            }
+        mmDevice = pairedDevices.first()
+    }
+
+
+
+
+    @Throws(IOException::class)
+    fun openBT() {
+        val uuid =
+            UUID.fromString("00001101-0000-1000-8000-00805F9B34FB") //Standard SerialPortService ID
+        var mmSocket =  mmDevice!!.createRfcommSocketToServiceRecord(uuid)
+        mmSocket.connect()
+        mmOutputStream = mmSocket.getOutputStream()
+        mmInputStream = mmSocket.getInputStream()
+        beginListenForData()
+        myLabel!!.text = "Bluetooth Opened"
+    }
+
+    fun beginListenForData() {
+        val handler = Handler()
+        val delimiter: Byte = 10 //This is the ASCII code for a newline character
+        stopWorker = false
+        readBufferPosition = 0
+        readBuffer = ByteArray(1024)
+        workerThread = Thread {
+            while (!Thread.currentThread().isInterrupted && !stopWorker) {
+                try {
+                    val bytesAvailable = mmInputStream!!.available()
+                    if (bytesAvailable > 0) {
+                        val packetBytes = ByteArray(bytesAvailable)
+                        mmInputStream!!.read(packetBytes)
+                        for (i in 0 until bytesAvailable) {
+                            val b = packetBytes[i]
+                            if (b == delimiter) {
+                                val encodedBytes = ByteArray(readBufferPosition)
+                                System.arraycopy(
+                                    readBuffer,
+                                    0,
+                                    encodedBytes,
+                                    0,
+                                    encodedBytes.size
+                                )
+                                val US_ASCII: Charset=Charset.forName("us-ascii")
+                                val data = String(encodedBytes, US_ASCII)
+                                readBufferPosition = 0
+                                handler.post { myLabel!!.text = data }
+                            } else {
+                                readBuffer[readBufferPosition++] = b
+                            }
+                        }
+                    }
+                } catch (ex: IOException) {
+                    stopWorker = true
+                }
+            }
+        }
+        workerThread!!.start()
+    }
+
+
+
+    @Throws(IOException::class)
+    fun closeBT() {
+        stopWorker = true
+        mmOutputStream!!.close()
+        mmInputStream!!.close()
+        mmSocket!!.close()
+        myLabel!!.text = "Bluetooth Closed"
     }
 }
